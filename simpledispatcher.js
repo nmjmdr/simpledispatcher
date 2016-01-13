@@ -4,61 +4,96 @@ var http = require('http');
 const PORT = 8080;
 
 var dispatcher = function() {
-    this.getMap = {} 
-    this.putMap = {}
-    this.postMap = {}
-    this.delMap = {}
+   this.map = {}
 }    
+
+var methodHandlers = function() {
+    this.onGet = null;
+    this.onPut = null;
+    this.onPost = null;
+    this.onDel = null;
+}
+
 
 var d = new dispatcher();
 
 // set the dispatch callbacks for put and get
 dispatcher.prototype.onGet = function(path,callback) {
-  this.getMap[path] = callback;  
+  if( this.map[path] == undefined || this.map[path] == null ) {
+    this.map[path] = new methodHandlers();
+  }
+  this.map[path].onGet = callback;  
 }
 
 dispatcher.prototype.onPut = function(path,callback) {
-  this.putMap[path] = callback;  
+  if( this.map[path] == undefined || this.map[path] == null ) {
+    this.map[path] = new methodHandlers();
+  }  
+  this.map[path].onPut = callback;   
 }
 
 dispatcher.prototype.onPost = function(path,callback) {
-  this.postMap[path] = callback;  
+  if( this.map[path] == undefined || this.map[path] == null ) {
+    this.map[path] = new methodHandlers();
+  }  
+  this.map[path].onPost = callback; 
 }
 
 dispatcher.prototype.onDel = function(path,callback) {
-  this.delMap[path] = callback;  
+  if( this.map[path] == undefined || this.map[path] == null ) {
+    this.map[path] = new methodHandlers();
+  }  
+  this.map[path].onDel = callback;   
 }
 
 
 
 dispatcher.prototype.dispatch = function(request,response) {
   
-  var map
-  if( request.method == "GET") {
-     map = this.getMap;
-  } else if( request.method == "PUT") {
-      map = this.putMap;
-  } else if( request.method == "POST") {
-      map = this.postMap;
-  } else if( request.method == "DEL") {
-      map = this.delMap;
-  }
-    else {
+  var callback = getcallback(this.map,request.url,request.method);
+   
+  // dispatch
+  if(callback != null && callback != undefined) {
+      callback(request,response)
+  } else {
+      console.log("no callback defined for path : "+request.url);
       response.writeHead(405, "Method not supported", {'Content-Type': 'text/html'});
       response.end();
-      return;
   }
-  deRefPath(request.url,map,request,response);
 }
 
-function deRefPath(path,map,request,response) {
-  if(map[path] != undefined) {
-      map[path](request,response)
-  } else {
-      console.log("no callback defined for path : "+path);
-      response.writeHead(405, "Method not supported", {'Content-Type': 'text/html'});
-      response.end();
-  }
+function getcallback(map,path,method) {
+    if(map[path] == undefined || map[path] == null) {
+	return null;
+    } 
+
+    if(method == "GET") {
+	if(map[path].onGet == undefined || map[path].onGet == null) {
+	    return null;
+	} else {
+	    return map[path].onGet;
+	}
+    } else if(method =="PUT") {
+	if(map[path].onPut == undefined || map[path].onPut == null) {
+	    return null;
+	} else {
+	    return map[path].onPut;
+	}
+    } else if(method =="POST") {
+	if(map[path].onPost == undefined || map[path].onPost == null) {
+	    return null;
+	} else {
+	    return map[path].onPost;
+	}
+    } else if(method =="DEL") {
+	if(map[path].onDel == undefined || map[path].onDel == null) {
+	    return null;
+	} else {
+	    return map[path].onDel;
+	}
+    }  else {
+	return null;
+    }   
 }
 
 
